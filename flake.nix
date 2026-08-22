@@ -40,7 +40,7 @@
       decode =
         charValue: c:
         let
-          index = builtins.mod (charValue - 33 + c) 94;
+          index = lib.trivial.mod (charValue - 33 + c) 94;
         in
         builtins.elemAt xlat1List index;
       # determine element at index 1-94 for xlat2
