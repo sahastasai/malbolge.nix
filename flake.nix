@@ -21,7 +21,7 @@
       # When working with trits, you must input two booleans.
       # The sequence ab has a as MSB.
       trit_creator = x : (y : if (builtins.typeOf x == "bool" && builtins.typeOf y == "bool" && !(x && y)) then { a = x; b = y; } else {a = false; b = false;});
-      trit_updator = memory : new_trit : index : (lib.lists.imap0(i : v : if i == index then new_trit else v ) memory);
+      trit_updator = memory : new_trit : index : (lib.lists.imap0(i : v : if i == index then new_trit else v) memory);
       mem = builtins.genList(x : { a = false; b = false; }) 59049;
     in {
 
