@@ -1,4 +1,5 @@
 Sahanav *Sai Ram*esh <me@sahastasai.com>
+Yusef Herrmann <yusefray@proton.me>
 
 # malbolge.nix
 
