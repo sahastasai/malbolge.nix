@@ -8,11 +8,7 @@
   };
 
   outputs =
-    {
-      self,
-      flake-schemas,
-      nixpkgs,
-    }:
+    { self, flake-schemas, nixpkgs, }:
     let
       pkgs = import <nixpkgs> { };
       lib = pkgs.lib;
@@ -33,6 +29,9 @@
     in
     {
       schemas = flake-schemas.schemas;
+
+      lib.interpreter = import ./malbolge.nix;
+
       devShells = forEachSupportedSystem (
         { pkgs }: {
           default = pkgs.mkShell {
