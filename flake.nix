@@ -45,14 +45,13 @@
         builtins.elemAt xlat1List index;
       # determine element at index 1-94 for xlat2
       mutate = charValue: builtins.elemAt xlat2List (charValue - 33);
-      pvm = index : builtins.elemAt (lib.lists.imap0 (i : v : (decode v i)) (fileinChars path)) index;
+      pvm = index : builtins.elemAt (lib.lists.imap0 (i : v : if v > 33 && v < 127 then (decode v i) else 0) (fileinChars path)) index; # is 0 messing us up?
       validMap = lib.lists.imap0 (i : v : ((pvm i) == "j" || (pvm i) == "i" || (pvm i) == "*" || (pvm i) == "p" || (pvm i) == "<" || (pvm i) == "/" || (pvm i) == "v" || (pvm i) == "o")) (builtins.genList (i : i) rawFileLength);
       # checks if the file is valid
       validFile = builtins.foldl' (acc : x : acc && x) true validMap;
-      exec = memory : {
-	
-      };
-
+      # a, c, d storage
+      acid = [0 0 0];
+      # TODO: write exec function @Sahanav
     in {	
       schemas = flake-schemas.schemas;
       devShells = forEachSupportedSystem ({ pkgs }: {
