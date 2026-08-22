@@ -19,10 +19,14 @@
       stdout = x : builtins.trace "${toString x}" (x);
       filein = x : (builtins.readFile x);
       fileinChars = x : builtins.stringToCharacters (filein x);
+      fileinInts = x : map (y : lib.strings.charToInt y) (fileinChars x);
       fileinCharsNoSpace = x : builtins.filter (y : y != " ") (fileinChars x);
       fileinIntsNoSpace = x : map (y : lib.strings.charToInt y) (fileinCharsNoSpace x); 
       mem = builtins.genList(x : { a = false; b = false; }) malbolgeLength;
-      path = "./me.mb";
+      path = "./main.mb";
+      stdin_path = "./stdin.txt";
+      # main.mbstdin is a stdin replicator
+      stdin_parsed = fileinInts stdin_path;
       fileLength = builtins.stringLength (fileinCharsNoSpace path);
       rawFileLength = builtins.stringLength (fileinChars path);
       initialMemory = builtins.genList(i : (if i < fileLength then (builtins.elemAt (fileinIntsNoSpace path) i) else 0)) malbolgeLength;
