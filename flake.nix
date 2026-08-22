@@ -22,19 +22,11 @@
       # The sequence ab has a as MSB.
       trit_creator = x : (y : if (builtins.typeOf x == "bool" && builtins.typeOf y == "bool" && !(x && y)) then { a = x; b = y; } else {a = false; b = false;});
       trit_updator = memory : new_trit : index : (lib.lists.imap0(i : v : if i == index then new_trit else v) memory);
+      trit_access = memory : index : builtins.elemAt memory index;
       mem = builtins.genList(x : { a = false; b = false; }) 59049;
+      y = f : (x : f (x x)) (x : f (x x));
     in {
-
-      schemas = flake-schemas.schemas;
-
-      devShells = forEachSupportedSystem ({ pkgs }: {
-        default = pkgs.mkShell {
-
-          packages = with pkgs; [
-            nixpkgs-fmt
-          ];
-        };
-      });
+	
     };
 
 
