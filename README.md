@@ -1,4 +1,4 @@
-Sahanav *Sai Ram*esh
+Sahanav *Sai Ram*esh [me@sahastasai.com]
 
 # malbolge.nix
 
