@@ -19,7 +19,7 @@
       # Trits have a and b, because you need 2 bits to hold a trit.
       # When working with trits, you must input two booleans.
       # The convention is that the sequence ab is little-endian, with b as LSB.
-      trit_creator = x : (y : if (builtins.typeOf x == "bool" && builtins.typeOf y == "bool") then {a = x; b = y; } else {a = false; b = false;});
+      trit_creator = x : (y : if (builtins.typeOf x == "bool" && builtins.typeOf y == "bool" && !(x && y)) then {a = x; b = y; } else {a = false; b = false;});
 
     in {
 
