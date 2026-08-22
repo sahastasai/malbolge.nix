@@ -25,9 +25,36 @@
       trit_access = memory : index : builtins.elemAt memory index;
       mem = builtins.genList(x : { a = false; b = false; }) 59049;
       y = f : (x : f (x x)) (x : f (x x));
-    in {
-	
-    };
-
-
+      xlat1 =
+        "+b(29e*j1VMEKLyC})8&m#~W>qxdRp0wkrUo[D7,XTcA\"lI"
+        + ".v%{gJh4G\\-=O@5`_3i<?Z';FNQuY]szf$!BS/|t:Pn6^Ha";
+    
+      xlat2 =
+        "5z]&gqtyfr$(we4{WP)H-Zn,[%\\3dL+Q;>U!pJS72FhOA1C"
+        + "B6v^=I_0/8|jsb9m<.TVac`uY*MK'X~xDl}REokN:#?G\"i@";
+    
+      # create character arrays
+      xlat1List = builtins.stringToCharacters xlat1;
+      xlat2List = builtins.stringToCharacters xlat2;
+    
+      # determine element at index 1-94 for xlat1
+      decode =
+        charValue: c:
+        let
+          index = builtins.mod (charValue - 33 + c) 94;
+        in
+        builtins.elemAt xlat1List index;
+    
+      # determine element at index 1-94 for xlat2
+      mutate = charValue: builtins.elemAt xlat2List (charValue - 33);
+    in {	
+      schemas = flake-schemas.schemas;
+      devShells = forEachSupportedSystem ({ pkgs }: {
+        default = pkgs.mkShell {
+          packages = with pkgs; [
+            nixpkgs-fmt
+          ];
+        };
+      });
+    }; 
 }
