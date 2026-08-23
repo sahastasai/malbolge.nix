@@ -1,5 +1,5 @@
-{ path ? "./main.mb", lib, ... }: let
-  malbolgeLength = 59048;
+{ lib, ... }: let # TODO: Readd `path` as an input
+  malbolgeLength = 59049;
   stdout = x: builtins.trace "${toString x}" x;
   filein = x: (builtins.readFile x);
   fileinChars = x: builtins.stringToCharacters (filein x);
