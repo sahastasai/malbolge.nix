@@ -72,9 +72,9 @@
 
  # begin exec 
   
-  exec = state@{ a, c, d, mem, out }:
+  exec = state@{ a, c, d, mem, out, instream }:
     let 
-      memc = builtins.elemAt mem c;
+      memc = builtins.elemAt mem c;      
       isValid = memc >= 33 && memc <= 126;
       cmd = if isValid then decode memc c else -1;
     in  
@@ -103,7 +103,8 @@
 		res = op a memd;
 	      in 
 		{ a = res; mem = lib.lists.replaceElemAt d [ res ] mem; }
-	    else if cmd == "<" then 
+	    else if cmd == "<" then { stdout a; }
+	    else if cmd == "/" then { a = (if (instream < (builtins.length stdin_parsed)) then { builtins.elemAt stdin_parsed instream; instream = instream + 1; } else (malbolgeLength - 1));} 
 in
 {
   inherit op;
