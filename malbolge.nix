@@ -1,4 +1,4 @@
-{ lib, ... }: let # TODO: Readd `path` as an input
+{ lib, path ? "./main.mb" ... }: let # TODO: update `flake.nix` and this to take in stdin_path as a parameter 
   malbolgeLength = 59049;
   stdout = x: builtins.trace "${toString x}" x;
   filein = x: (builtins.readFile x);
@@ -7,9 +7,8 @@
   fileinCharsNoSpace = x: builtins.filter (y: y != " ") (fileinChars x);
   fileinIntsNoSpace = x: map (y: lib.strings.charToInt y) (fileinCharsNoSpace x);
   mem = builtins.genList(x : { a = false; b = false; }) malbolgeLength;
-  path = "./main.mb";
+  # path = "./main.mb"; TODO delete this line
   stdin_path = "./stdin.txt";
-  # main.mbstdin is a stdin replicator
   stdin_parsed = fileinInts stdin_path;
   fileLength = builtins.stringLength (fileinCharsNoSpace path);
   rawFileLength = builtins.stringLength (fileinChars path);
@@ -72,7 +71,7 @@
 
  # begin exec 
   
-  exec = state@{ a, c, d, mem, out, instream }:
+  exec = state@{ a, c, d, mem, out, instream, interim }:
     let 
       memc = builtins.elemAt mem c;      
       isValid = memc >= 33 && memc <= 126;
@@ -81,7 +80,7 @@
       inherit malbolgeLength;
       inherit stdin_parsed;
     in
-      # TODO: Doubtful about this segment. How should `state` be handled? How can I just change variables? What do we do with the `step` variable? 
+      # TODO: Finish `exec` using the `step` variable 
       (if cmd == -1 then # TODO: we need this to run if our switch statement is triggered, too...
 	exec (state // {
 	  c = lib.trivial.mod (c + 1) malbolgeLength;
@@ -107,9 +106,9 @@
 		res = op a memd;
 	      in 
 		{ a = res; mem = lib.lists.replaceElemAt d [ res ] mem; }
-	    else if cmd == "<" then stdout a
+	    else if cmd == "<" then { interim = stdout a; }
 	    # Is below an appropriate way to use `state`? 
-	    else if cmd == "/" then state // { a = (if (instream < (builtins.length stdin_parsed)) then builtins.elemAt stdin_parsed instream else malbolgeLength - 1);}); # TODO: must increment instream after the builtins.elemAt call... how do I do this?
+	    else if cmd == "/" then { a = (if (instream < (builtins.length stdin_parsed)) then builtins.elemAt stdin_parsed instream else malbolgeLength - 1); instream = instream + 1;}); 
 	    lib.lists.replaceElemAt c [ (encode (builtins.elemAt mem c)) ] mem;
 in
 {
