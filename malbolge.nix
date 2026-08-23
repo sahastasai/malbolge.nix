@@ -1,4 +1,4 @@
-{ lib, ... }: let
+{ path ? "./main.mb", lib, ... }: let
   malbolgeLength = 59048;
   stdout = x: builtins.trace "${toString x}" x;
   filein = x: (builtins.readFile x);
@@ -39,9 +39,8 @@
   validFile = builtins.foldl' (acc: x: acc && x) true validMap;
   # a, c, d storage
   acid = [0 0 0];
-  # TODO: write exec function
 
-  # begin op fn
+   # begin op fn
   # powers of 9 arr
   p9 = [ 1 9 81 729 6561 ];
 
@@ -70,6 +69,41 @@
       in
       acc + (result * p)
     ) 0 p9;
+
+ # begin exec 
+  
+  exec = state@{ a, c, d, mem, out }:
+    let 
+      memc = builtins.elemAt mem c;
+      isValid = memc >= 33 && memc <= 126;
+      cmd = if isValid then decode memc c else -1;
+    in  
+      if cmd == -1 then
+	exec (state // {
+	  c = lib.trivial.mod (c + 1) malbolgeLength;
+	  d = lib.trivial.mod (d + 1) malbolgeLength;
+	})
+      # you could map integers to these instead for execution speed
+      else if cmd == "v" then 
+	out
+      else 
+	let
+	  memd = builtins.elemAt mem d; 
+	  
+	  step = 
+	    if cmd == "j" then { d = memd; }
+	    else if cmd == "i" then { c = memd; }
+	    else if cmd == "*" then 
+	      let 
+		rot = (memd / 3) + ((lib.trivial.mod memd 3) * 19683);
+	      in
+		{a = rot; mem = lib.lists.replaceElemAt d [ rot ] mem;}
+	    else if cmd == "p" then 
+	      let 
+		res = op a memd;
+	      in 
+		{ a = res; mem = lib.lists.replaceElemAt d [ res ] mem; }
+	    else if cmd == "<" then 
 in
 {
   inherit op;
