@@ -106,6 +106,9 @@
 	    else if cmd == "<" then { stdout a; }
 	    else if cmd == "/" then { a = (if (instream < (builtins.length stdin_parsed)) then { builtins.elemAt stdin_parsed instream; instream = instream + 1; } else (malbolgeLength - 1));}
 	    lib.lists.replaceElemAt c [ (encode (builtins.elemAt mem c)) ] mem;
+	    
+	    c = c + 1;
+	    d = d + 1;
 	    c = lib.mod c (malbolgeLength - 1);
 	    d = lib.mod d (malbolgeLength - 1); 
 	}
