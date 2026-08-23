@@ -77,12 +77,9 @@
       memc = builtins.elemAt mem c;      
       isValid = memc >= 33 && memc <= 126;
       cmd = if isValid then decode memc c else -1;
-    in { 
+    in  
       if cmd == -1 then
-	exec (state // {
-	  c = lib.trivial.mod (c + 1) malbolgeLength;
-	  d = lib.trivial.mod (d + 1) malbolgeLength;
-	})
+	exec state
       # you could map integers to these instead for execution speed
       else if cmd == "v" then 
 	out
@@ -97,20 +94,38 @@
 	      let 
 		rot = (memd / 3) + ((lib.trivial.mod memd 3) * 19683);
 	      in
-		{a = rot; mem = lib.lists.replaceElemAt d [ rot ] mem;}
+		{a = rot; mem = lib.lists.replaceElemAt mem d rot;}
 	    else if cmd == "p" then 
 	      let 
 		res = op a memd;
 	      in 
-		{ a = res; mem = lib.lists.replaceElemAt d [ res ] mem; }
-	    else if cmd == "<" then { stdout a; }
-	    else if cmd == "/" then { a = (if (instream < (builtins.length stdin_parsed)) then { builtins.elemAt stdin_parsed instream; instream = instream + 1; } else (malbolgeLength - 1));}
-	    lib.lists.replaceElemAt c [ (encode (builtins.elemAt mem c)) ] mem;
-	    c = lib.mod c (malbolgeLength - 1);
-	    d = lib.mod d (malbolgeLength - 1); 
-	}
-in
-{
+		{a = res; mem = lib.lists.replaceElemAt mem d res;}
+	    else if cmd == "<" then stdout a
+	    else if cmd == "/" then 
+	      if instream < builtins.length stdin_parsed then { 
+		a = builtins.elemAt stdin_parsed instream;
+		instream = instream + 1;
+	      } else {
+		a = 59048;
+	      }
+	    else {};
+
+	  # prepare next iteration
+	  nextA = step.a or a;
+	  nextOut = step.out or out;
+	  nextInstream = step.instream or instream;	  
+	  baseMem = step.mem or mem;
+	  nextMem = lib.lists.replaceElemAt baseMem c [(mutate memc)];
+	  # modulo resets value to 0 when limit is reached
+	  nextC = lib.trivial.mod ((step.c or c) + 1) malbolgeLength;
+	  nextD = lib.trivial.mod ((step.d or d) + 1) malbolgeLength;
+	in 
+	  exec { a = nextA; c = nextC; d = nextD; mem = nextMem; out = nextOut; instream = nextInstream; }
+	  
+      # end exec
+	
+in {
+
   inherit op;
-  # inherit exec;
+  inherit exec;
 }

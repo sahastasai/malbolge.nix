@@ -21,15 +21,15 @@
 
       lib.interpreter = import ./malbolge.nix;
 
-      apps = forEachSupportedSystem ({ pkgs }: {
-	default = {
-	  type = "app";
-	  program = "${pkgs.writeShellScriptBin "malbolge-nix" ''
-	    FILE="''${1:-./main.mb}
-	    ${pkgs.nix}/bin/nix eval --raw --impure --argstr path "$FILE" --file ${./malbolge.nix}
+       apps = forEachSupportedSystem ({ pkgs }: {
+         default = {
+	   type = "app";
+	   program = "${pkgs.writeShellScriptBin "malbolge-nix" ''
+	     FILE="''${1:-./main.mb}
+	     ${pkgs.nix}/bin/nix eval --raw --impure --argstr path "$FILE" --file ${./malbolge.nix}"
 	    ''}/bin/malbolge-nix";
-	  };
-	});
+     	  };
+     	});
 
       devShells = forEachSupportedSystem (
         { pkgs }: {
