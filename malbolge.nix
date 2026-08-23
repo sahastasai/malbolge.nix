@@ -77,7 +77,7 @@
       memc = builtins.elemAt mem c;      
       isValid = memc >= 33 && memc <= 126;
       cmd = if isValid then decode memc c else -1;
-    in  
+    in { 
       if cmd == -1 then
 	exec (state // {
 	  c = lib.trivial.mod (c + 1) malbolgeLength;
@@ -104,7 +104,11 @@
 	      in 
 		{ a = res; mem = lib.lists.replaceElemAt d [ res ] mem; }
 	    else if cmd == "<" then { stdout a; }
-	    else if cmd == "/" then { a = (if (instream < (builtins.length stdin_parsed)) then { builtins.elemAt stdin_parsed instream; instream = instream + 1; } else (malbolgeLength - 1));} 
+	    else if cmd == "/" then { a = (if (instream < (builtins.length stdin_parsed)) then { builtins.elemAt stdin_parsed instream; instream = instream + 1; } else (malbolgeLength - 1));}
+	    lib.lists.replaceElemAt c [ (encode (builtins.elemAt mem c)) ] mem;
+	    c = lib.mod c (malbolgeLength - 1);
+	    d = lib.mod d (malbolgeLength - 1); 
+	}
 in
 {
   inherit op;
