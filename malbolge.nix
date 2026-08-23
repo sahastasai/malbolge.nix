@@ -77,8 +77,12 @@
       memc = builtins.elemAt mem c;      
       isValid = memc >= 33 && memc <= 126;
       cmd = if isValid then decode memc c else -1;
-    in { 
-      if cmd == -1 then
+      inherit stdout;
+      inherit malbolgeLength;
+      inherit stdin_parsed;
+    in
+      # TODO: Doubtful about this segment. How should `state` be handled? How can I just change variables? What do we do with the `step` variable? 
+      (if cmd == -1 then # TODO: we need this to run if our switch statement is triggered, too...
 	exec (state // {
 	  c = lib.trivial.mod (c + 1) malbolgeLength;
 	  d = lib.trivial.mod (d + 1) malbolgeLength;
@@ -103,15 +107,10 @@
 		res = op a memd;
 	      in 
 		{ a = res; mem = lib.lists.replaceElemAt d [ res ] mem; }
-	    else if cmd == "<" then { stdout a; }
-	    else if cmd == "/" then { a = (if (instream < (builtins.length stdin_parsed)) then { builtins.elemAt stdin_parsed instream; instream = instream + 1; } else (malbolgeLength - 1));}
+	    else if cmd == "<" then stdout a
+	    # Is below an appropriate way to use `state`? 
+	    else if cmd == "/" then state // { a = (if (instream < (builtins.length stdin_parsed)) then builtins.elemAt stdin_parsed instream else malbolgeLength - 1);}); # TODO: must increment instream after the builtins.elemAt call... how do I do this?
 	    lib.lists.replaceElemAt c [ (encode (builtins.elemAt mem c)) ] mem;
-	    
-	    c = c + 1;
-	    d = d + 1;
-	    c = lib.mod c (malbolgeLength - 1);
-	    d = lib.mod d (malbolgeLength - 1); 
-	}
 in
 {
   inherit op; # don't even think this is necessary
