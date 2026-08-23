@@ -111,6 +111,6 @@
 	}
 in
 {
-  inherit op;
-  # inherit exec;
+  inherit op; # don't even think this is necessary
+  inherit exec;
 }
