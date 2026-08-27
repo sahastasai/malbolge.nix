@@ -1,3 +1,4 @@
+# TODO: Migrate all unnecessary char usages to int
 { pkgs, lib, path ? "./main.mb" ... }: let
   malbolgeLength = 59049;
   stdout = x: let
@@ -9,9 +10,9 @@
 	'';
   filein = x: (builtins.readFile x);
   fileinChars = x: builtins.stringToCharacters (filein x);
-  fileinInts = x: map (y: lib.strings.charToInt y) (fileinChars x);
+  fileinInts = x: map lib.strings.charToInt (fileinChars x);
   fileinCharsNoSpace = x: builtins.filter (y: y != " ") (fileinChars x);
-  fileinIntsNoSpace = x: map (y: lib.strings.charToInt y) (fileinCharsNoSpace x);
+  fileinIntsNoSpace = x: map lib.strings.charToInt (fileinCharsNoSpace x);
   mem = builtins.genList(x : { a = false; b = false; }) malbolgeLength;
   path = "./main.mb";
   stdin_path = "./stdin.txt";
@@ -38,7 +39,7 @@
     in
     builtins.elemAt xlat1List index;
   # determine element at index 1-94 for xlat2
-  mutate = charValue: builtins.elemAt xlat2List (charValue - 33);
+  mutate = charValue: lib.strings.charToInt (builtins.elemAt xlat2List (charValue - 33)); # fixes one character string addition to memory
   pvm = index : builtins.elemAt (lib.lists.imap0 (i : v : if v > 33 && v < 127 then (decode v i) else 0) (fileinChars path)) index; # is 0 messing us up?
     validMap = lib.lists.imap0 (i : v : ((pvm i) == "j" || (pvm i) == "i" || (pvm i) == "*" || (pvm i) == "p" || (pvm i) == "<" || (pvm i) == "/" || (pvm i) == "v" || (pvm i) == "o")) (builtins.genList (i : i) rawFileLength);
   # checks if the file is valid
@@ -86,10 +87,10 @@
 	exec state
       # you could map integers to these instead for execution speed
       else if cmd == "v" then 
-	stdout out
+	builtins.break(stdout out) # breakpoint
       else 
 	let
-	  memd = builtins.elemAt mem d; 
+	  memd = builtins.break (builtins.elemAt mem d); # breakpoint added for debugging purposes 
 	  
 	  step = 
 	    if cmd == "j" then { d = memd; }
@@ -107,7 +108,7 @@
 	    else if cmd == "<" then {out = out + (builtins.toString a);}
 	    else if cmd == "/" then 
 	      if instream < builtins.length stdin_parsed then { 
-		a = builtins.elemAt stdin_parsed instream;
+		a = builtins.break(builtins.elemAt stdin_parsed instream); # breakpoint
 		instream = instream + 1;
 	      } else {
 		a = 59048;
@@ -119,7 +120,7 @@
 	  nextOut = step.out or out;
 	  nextInstream = step.instream or instream;	  
 	  baseMem = step.mem or mem;
-	  nextMem = lib.lists.replaceElemAt baseMem c [(mutate memc)];
+	  nextMem = lib.lists.replaceElemAt baseMem c (mutate memc); # remember: [ mutate memc ] -> (mutate memc). The first is list insertion
 	  # modulo resets value to 0 when limit is reached
 	  nextC = lib.trivial.mod ((step.c or c) + 1) malbolgeLength;
 	  nextD = lib.trivial.mod ((step.d or d) + 1) malbolgeLength;
@@ -132,5 +133,12 @@ in {
 
   inherit op;
   inherit exec;
-  p = exec {a=0; c=0; d=0; mem=transformedMemory; out=""; instream=0;};  
+  p = exec {
+	a = 0; 
+	c = 0; 
+	d = 0; 
+	mem = transformedMemory; 
+	out = ""; 
+	instream = 0;
+  };  
 }

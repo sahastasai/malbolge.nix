@@ -8,14 +8,13 @@
   };
 
   outputs =
-    { self, flake-schemas, nixpkgs, }:
+    { self, flake-schemas, nixpkgs }:
     let
-      pkgs = import <nixpkgs> { };
-      lib = pkgs.lib;
       supportedSystems = [ "x86_64-linux" "aarch64-darwin" "x86_64-darwin" "aarch64-linux" ];
       forEachSupportedSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f {
-            pkgs = import nixpkgs { inherit system; };
+            pkgs = nixpkgs.legacyPackages.${system}; # use flake pkgs import method instead of legacy
       });
+      lib = builtins.break(nixpkgs.lib);
     in {
       schemas = flake-schemas.schemas;
 
@@ -26,7 +25,7 @@
 	   type = "app";
 	   program = "${pkgs.writeShellScriptBin "malbolge-nix" ''
 	     FILE="''${1:-./main.mb}
-	     ${pkgs.nix}/bin/nix eval --raw --impure --argstr path "$FILE" --file ${./malbolge.nix}"
+	     ${pkgs.nix}/bin/nix eval --raw --argstr path "$FILE" --file ${./malbolge.nix}"
 	    ''}/bin/malbolge-nix";
      	 };
        });
