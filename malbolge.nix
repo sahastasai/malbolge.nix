@@ -1,6 +1,12 @@
-{ path ? "./main.mb", lib, ... }: let
-  malbolgeLength = 59048;
-  stdout = x: builtins.trace "${toString x}" x;
+{ pkgs, lib, path ? "./main.mb" ... }: let
+  malbolgeLength = 59049;
+  stdout = x: let
+	scriptFile = pkgs.writeTextFile {name="out"; executable=true; destination="/bin/out"; text=''#!/usr/bin/env bash
+  echo ${toString x};'';};
+	in 
+	pkgs.runCommand "capture-stdout" {} ''
+		${scriptFile}/bin/out > $out
+	'';
   filein = x: (builtins.readFile x);
   fileinChars = x: builtins.stringToCharacters (filein x);
   fileinInts = x: map (y: lib.strings.charToInt y) (fileinChars x);
@@ -11,8 +17,8 @@
   stdin_path = "./stdin.txt";
   # main.mbstdin is a stdin replicator
   stdin_parsed = fileinInts stdin_path;
-  fileLength = builtins.stringLength (fileinCharsNoSpace path);
-  rawFileLength = builtins.stringLength (fileinChars path);
+  fileLength = builtins.length (fileinCharsNoSpace path);
+  rawFileLength = builtins.length (fileinChars path);
   initialMemory = builtins.genList(i : (if i < fileLength then (builtins.elemAt (fileinIntsNoSpace path) i) else 0)) malbolgeLength;
   transformedMemory = lib.lists.imap0 (i : v : if i < fileLength then v else (op (builtins.elemAt transformedMemory (i - 1)) (builtins.elemAt transformedMemory (i - 2)))) initialMemory;
   xlat1 =
@@ -37,8 +43,6 @@
     validMap = lib.lists.imap0 (i : v : ((pvm i) == "j" || (pvm i) == "i" || (pvm i) == "*" || (pvm i) == "p" || (pvm i) == "<" || (pvm i) == "/" || (pvm i) == "v" || (pvm i) == "o")) (builtins.genList (i : i) rawFileLength);
   # checks if the file is valid
   validFile = builtins.foldl' (acc: x: acc && x) true validMap;
-  # a, c, d storage
-  acid = [0 0 0];
 
    # begin op fn
   # powers of 9 arr
@@ -82,7 +86,7 @@
 	exec state
       # you could map integers to these instead for execution speed
       else if cmd == "v" then 
-	out
+	stdout out
       else 
 	let
 	  memd = builtins.elemAt mem d; 
@@ -100,7 +104,7 @@
 		res = op a memd;
 	      in 
 		{a = res; mem = lib.lists.replaceElemAt mem d res;}
-	    else if cmd == "<" then stdout a
+	    else if cmd == "<" then {out = out + (builtins.toString a);}
 	    else if cmd == "/" then 
 	      if instream < builtins.length stdin_parsed then { 
 		a = builtins.elemAt stdin_parsed instream;
@@ -128,4 +132,5 @@ in {
 
   inherit op;
   inherit exec;
+  p = exec {a=0; c=0; d=0; mem=transformedMemory; out=""; instream=0;};  
 }
