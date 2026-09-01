@@ -20,16 +20,39 @@
 
       lib.interpreter = import ./malbolge.nix;
 
-       apps = forEachSupportedSystem ({ pkgs }: {
-         default = {
-	   type = "app";
-	   program = "${pkgs.writeShellScriptBin "malbolge-nix" ''
-	     FILE="''${1:-./main.mb}
-	     ${pkgs.nix}/bin/nix eval --raw --argstr path "$FILE" --file ${./malbolge.nix}"
-	    ''}/bin/malbolge-nix";
-     	 };
-       });
+apps = forEachSupportedSystem ({ pkgs }: {
+  default =
+    let
+      runner = pkgs.writeShellScriptBin "malbolge-nix" ''
+        FILE="$(${pkgs.coreutils}/bin/realpath "''${1:-./main.mb}")"
+        export MALBOLGE_FILE="$FILE"
 
+        exec ${pkgs.nix}/bin/nix eval \
+          --impure \
+          --json \
+          --expr '
+            let
+              pkgs = import ${nixpkgs} {
+                system = "${pkgs.system}";
+              };
+
+              interpreter = import ${./malbolge.nix} {
+                inherit pkgs;
+                lib = pkgs.lib;
+                path = builtins.toPath (
+                  builtins.getEnv "MALBOLGE_FILE"
+                );
+              };
+            in
+              interpreter.p
+          '
+      '';
+    in
+    {
+      type = "app";
+      program = "${runner}/bin/malbolge-nix";
+    };
+});
       devShells = forEachSupportedSystem (
         { pkgs }: {
           default = pkgs.mkShell {
