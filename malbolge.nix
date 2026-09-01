@@ -16,10 +16,10 @@
   fileinCharsNoSpace = x: builtins.filter (y: y != " " && y != "\n" && y != "\t" && y != "\r") (fileinChars x);
   fileinIntsNoSpace = x: map lib.strings.charToInt (fileinCharsNoSpace x); # use EVERYWHERE
   expectInt = name: x:
-  if builtins.isInt x then
+  if (builtins.typeOf x == "int")  then
     x
   else
-    throw "${name}: expected int, got ${builtins.typeOf x}";
+    throw "${name}: expected int, got ${builtins.typeOf x}. Found value ${toString x} where expected int.";
   mem = builtins.genList(x : { a = false; b = false; }) malbolgeLength;
   stdin_path = "./stdin.txt"; # add to function call eventually
   stdin_parsed = fileinInts stdin_path;
