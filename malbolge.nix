@@ -1,4 +1,5 @@
-# TODO: Migrate all unnecessary char usages to int
+# TODO: Migrate all char usages to int
+# TODO: rewrite memory structure to be attribute-set based
 { pkgs, lib, path ? ./main.mb, ... }: let
   malbolgeLength = 59049;
   stdout = x : builtins.trace "output: ${x}";
@@ -119,10 +120,15 @@
 	  nextOut = step.out or out;
 	  nextInstream = step.instream or instream;	  
 	  baseMem = step.mem or mem;
-	  nextMem = lib.lists.replaceElemAt baseMem c (mutate memc); # remember: [ mutate memc ] -> (mutate memc). The first is list insertion
+#	  postMem = lib.lists.replaceElemAt baseMem c (mutate memc); # remember: [ mutate memc ] -> (mutate memc). The first is list insertion
 	  # modulo resets value to 0 when limit is reached
-	  nextC = lib.trivial.mod ((step.c or c) + 1) malbolgeLength;
-	  nextD = lib.trivial.mod ((step.d or d) + 1) malbolgeLength;
+	  postC = step.c or c;
+	  postD = step.d or d;
+	  
+	  encryptValue = builtins.elemAt baseMem postC;
+	  nextMem = if encryptValue >= 33 && encryptValue <= 126 then lib.lists.replaceElemAt baseMem postC (mutate encryptValue) else baseMem; 
+	  nextC = lib.trivial.mod (postC + 1) malbolgeLength;
+	  nextD = lib.trivial.mod (postD + 1) malbolgeLength;
 	in 
 	  exec { a = nextA; c = nextC; d = nextD; mem = nextMem; out = nextOut; instream = nextInstream; }
 	  
