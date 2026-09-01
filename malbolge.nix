@@ -1,13 +1,14 @@
 # TODO: Migrate all unnecessary char usages to int
-{ pkgs, lib, path ? "./main.mb" ... }: let
+{ pkgs, lib, path ? "./main.mb", ... }: let
   malbolgeLength = 59049;
-  stdout = x: let
-	scriptFile = pkgs.writeTextFile {name="out"; executable=true; destination="/bin/out"; text=''#!/usr/bin/env bash
-  echo ${toString x};'';};
-	in 
-	pkgs.runCommand "capture-stdout" {} ''
-		${scriptFile}/bin/out > $out
-	'';
+  stdout = x : builtins.trace "output: ${x}";
+  # stdout = x: let
+#	scriptFile = pkgs.writeTextFile {name="out"; executable=true; destination="/bin/out"; text=''#!/usr/bin/env bash
+ # echo ${toString x};'';};
+#	in 
+#	pkgs.runCommand "capture-stdout" {} ''
+#		${scriptFile}/bin/out > $out
+#	'';
   filein = x: (builtins.readFile x);
   fileinChars = x: builtins.stringToCharacters (filein x);
   fileinInts = x: map lib.strings.charToInt (fileinChars x);
