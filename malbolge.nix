@@ -11,7 +11,7 @@
   filein = x: (builtins.readFile x);
   fileinChars = x: builtins.stringToCharacters (filein x);
   fileinInts = x: map lib.strings.charToInt (fileinChars x);
-  fileinCharsNoSpace = x: builtins.filter (y: y != " ") (fileinChars x);
+  fileinCharsNoSpace = x: builtins.filter (y: y != " " && y != "\n" && y != "\t" && y != "\r") (fileinChars x);
   fileinIntsNoSpace = x: map lib.strings.charToInt (fileinCharsNoSpace x);
   mem = builtins.genList(x : { a = false; b = false; }) malbolgeLength;
   path = "./main.mb";
@@ -40,8 +40,8 @@
     builtins.elemAt xlat1List index;
   # determine element at index 1-94 for xlat2
   mutate = charValue: lib.strings.charToInt (builtins.elemAt xlat2List (charValue - 33)); # fixes one character string addition to memory
-  pvm = index : builtins.elemAt (lib.lists.imap0 (i : v : if v > 33 && v < 127 then (decode v i) else 0) (fileinChars path)) index; # is 0 messing us up?
-    validMap = lib.lists.imap0 (i : v : ((pvm i) == "j" || (pvm i) == "i" || (pvm i) == "*" || (pvm i) == "p" || (pvm i) == "<" || (pvm i) == "/" || (pvm i) == "v" || (pvm i) == "o")) (builtins.genList (i : i) rawFileLength);
+  pvm = index : builtins.elemAt (lib.lists.imap0 (i : v : if v > 33 && v < 127 then (decode v i) else 0) (fileinIntsNoSpace path)) index; # potentially problematic line 
+    validMap = lib.lists.imap0 (i : v : ((pvm i) == "j" || (pvm i) == "i" || (pvm i) == "*" || (pvm i) == "p" || (pvm i) == "<" || (pvm i) == "/" || (pvm i) == "v" || (pvm i) == "o")) (builtins.genList (i : i) rawFileLength); # this line could use some cleaning
   # checks if the file is valid
   validFile = builtins.foldl' (acc: x: acc && x) true validMap;
 
@@ -83,9 +83,9 @@
       isValid = memc >= 33 && memc <= 126;
       cmd = if isValid then decode memc c else -1;
     in  
-      if cmd == -1 then
-	exec state
-      # you could map integers to these instead for execution speed
+      if !isValid then
+  throw "invalid memory value ${toString memc} at C=${toString c}"
+      # Integers are required 
       else if cmd == "v" then 
 	builtins.break(stdout out) # breakpoint
       else 
