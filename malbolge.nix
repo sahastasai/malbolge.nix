@@ -41,7 +41,7 @@
   # determine element at index 1-94 for xlat2
   mutate = intValue: lib.strings.charToInt(builtins.elemAt xlat2List (intValue - 33)); # fixes one character string addition to memory
   pvm = index : builtins.elemAt (lib.lists.imap0 (i : v : if v > 33 && v < 127 then (decode v i) else 0) (fileinIntsNoSpace path)) index; # potentially problematic line 
-    validMap = lib.lists.imap0 (i : v : ((pvm i) == 106 || (pvm i) == 105 || (pvm i) == 42 || (pvm i) == 112 || (pvm i) == 60 || (pvm i) == 47 || (pvm i) == 118 || (pvm i) == 111)) (builtins.genList (i : i) fileLength); # this line could use some cleaning. using `fileLength` everywhere 
+    validMap = lib.lists.imap0 (i : _ : ((pvm i) == 106 || (pvm i) == 105 || (pvm i) == 42 || (pvm i) == 112 || (pvm i) == 60 || (pvm i) == 47 || (pvm i) == 118 || (pvm i) == 111)) (builtins.genList (i : i) fileLength); # this line could use some cleaning. using `fileLength` everywhere 
   # checks if the file is valid
   validFile = builtins.foldl' (acc: x: acc && x) true validMap;
 
@@ -80,11 +80,11 @@
   exec = state@{ a, c, d, mem, out, instream }:
     let 
       memc = builtins.elemAt mem c;      
-      isValid = memc >= 33 && memc <= 126;
+      isValid = (memc >= 33 && memc <= 126);
       cmd = lib.trivial.mod (c + memc) 94; # cleaner than decode memc c
     in  
       if !isValid then
-  	throw "invalid memory value ${toString memc} at C=${toString c}"
+  	throw "invalid memory value ${builtins.toString memc} at C=${builtins.toString c}"
       # Integers are required 
       else if cmd == 81 then 
 	builtins.break(stdout out) # breakpoint
@@ -99,12 +99,12 @@
 	      let 
 		rot = (memd / 3) + ((lib.trivial.mod memd 3) * 19683);
 	      in
-		{a = rot; mem = lib.lists.replaceElemAt mem d rot;}
+		{a = rot; mem = lib.replaceElemAt mem d rot;}
 	    else if cmd == 62 then 
 	      let 
 		res = op a memd;
 	      in 
-		{a = res; mem = lib.lists.replaceElemAt mem d res;}
+		{a = res; mem = lib.replaceElemAt mem d res;}
 	    else if cmd == 5 then {out = out ++ [(lib.trivial.mod a 256)];}
 	    else if cmd == 23 then 
 	      if instream < builtins.length stdin_parsed then { 
@@ -120,13 +120,13 @@
 	  nextOut = step.out or out;
 	  nextInstream = step.instream or instream;	  
 	  baseMem = step.mem or mem;
-#	  postMem = lib.lists.replaceElemAt baseMem c (mutate memc); # remember: [ mutate memc ] -> (mutate memc). The first is list insertion
+#	  postMem = lib.replaceElemAt baseMem c (mutate memc); # remember: [ mutate memc ] -> (mutate memc). The first is list insertion
 	  # modulo resets value to 0 when limit is reached
 	  postC = step.c or c;
 	  postD = step.d or d;
 	  
 	  encryptValue = builtins.elemAt baseMem postC;
-	  nextMem = if encryptValue >= 33 && encryptValue <= 126 then lib.lists.replaceElemAt baseMem postC (mutate encryptValue) else baseMem; 
+	  nextMem = if encryptValue >= 33 && encryptValue <= 126 then lib.replaceElemAt baseMem postC (mutate encryptValue) else baseMem; 
 	  nextC = lib.trivial.mod (postC + 1) malbolgeLength;
 	  nextD = lib.trivial.mod (postD + 1) malbolgeLength;
 	in 
@@ -138,7 +138,7 @@ in {
 
   inherit op;
   inherit exec;
-  p = assert validFile; exec {
+  p =  exec {
 	a = 0; 
 	c = 0; 
 	d = 0; 
