@@ -11,7 +11,7 @@
 #		${scriptFile}/bin/out > $out
 #	'';
   filein = x: (builtins.readFile x);
-  fileinChars = x: builtins.stringToCharacters (filein x);
+  fileinChars = x: lib.stringToCharacters (filein x);
   fileinInts = x: map lib.strings.charToInt (fileinChars x);
   fileinCharsNoSpace = x: builtins.filter (y: y != " " && y != "\n" && y != "\t" && y != "\r") (fileinChars x);
   fileinIntsNoSpace = x: map lib.strings.charToInt (fileinCharsNoSpace x); # use EVERYWHERE
@@ -29,8 +29,8 @@
     "5z]&gqtyfr$(we4{WP)H-Zn,[%\\3dL+Q;>U!pJS72FhOA1C"
     + "B6v^=I_0/8|jsb9m<.TVac`uY*MK'X~xDl}REokN:#?G\"i@";
   # create character arrays
-  xlat1List = builtins.stringToCharacters xlat1;
-  xlat2List = builtins.stringToCharacters xlat2;
+  xlat1List = lib.stringToCharacters xlat1;
+  xlat2List = lib.stringToCharacters xlat2;
   # determine element at index 1-94 for xlat1
   decode =
     intValue: c:
