@@ -15,6 +15,11 @@
   fileinInts = x: map lib.strings.charToInt (fileinChars x);
   fileinCharsNoSpace = x: builtins.filter (y: y != " " && y != "\n" && y != "\t" && y != "\r") (fileinChars x);
   fileinIntsNoSpace = x: map lib.strings.charToInt (fileinCharsNoSpace x); # use EVERYWHERE
+  expectInt = name: x:
+  if builtins.isInt x then
+    x
+  else
+    throw "${name}: expected int, got ${builtins.typeOf x}";
   mem = builtins.genList(x : { a = false; b = false; }) malbolgeLength;
   stdin_path = "./stdin.txt"; # add to function call eventually
   stdin_parsed = fileinInts stdin_path;
@@ -81,9 +86,9 @@
     let 
       memc = builtins.elemAt mem c;      
       isValid = (memc >= 33 && memc <= 126);
-      cmd = lib.trivial.mod (c + memc) 94; # cleaner than decode memc c
+      cmd = if isValid then lib.trivial.mod (c + memc) 94 else -1; # cleaner than decode memc c
     in  
-      if !isValid then
+      if cmd < 0 then
   	throw "invalid memory value ${builtins.toString memc} at C=${builtins.toString c}"
       # Integers are required 
       else if cmd == 81 then 
@@ -93,18 +98,18 @@
 	  memd = builtins.break (builtins.elemAt mem d); # breakpoint added for debugging purposes 
 	  
 	  step = 
-	    if cmd == 40 then { d = memd; }
-	    else if cmd == 4 then { c = memd; }
+	    if cmd == 40 then { d = (expectInt "memdcmd40" memd); }
+	    else if cmd == 4 then { c = (expectInt "memdcmd4" memd); }
 	    else if cmd == 39 then 
 	      let 
 		rot = (memd / 3) + ((lib.trivial.mod memd 3) * 19683);
 	      in
-		{a = rot; mem = lib.replaceElemAt mem d rot;}
+		{a = (expectInt "rotcmd39" rot); mem = lib.replaceElemAt mem d rot;}
 	    else if cmd == 62 then 
 	      let 
 		res = op a memd;
 	      in 
-		{a = res; mem = lib.replaceElemAt mem d res;}
+		{a = (expectInt "rescmd62" res); mem = lib.replaceElemAt mem d res;}
 	    else if cmd == 5 then {out = out ++ [(lib.trivial.mod a 256)];}
 	    else if cmd == 23 then 
 	      if instream < builtins.length stdin_parsed then { 
@@ -138,7 +143,7 @@ in {
 
   inherit op;
   inherit exec;
-  p =  exec {
+  p = exec {
 	a = 0; 
 	c = 0; 
 	d = 0; 

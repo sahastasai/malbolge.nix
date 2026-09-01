@@ -28,7 +28,8 @@ apps = forEachSupportedSystem ({ pkgs }: {
         export MALBOLGE_FILE="$FILE"
 
         exec ${pkgs.nix}/bin/nix eval \
-          --impure \
+          --show-trace \
+	  --impure \
           --json \
           --expr '
             let
