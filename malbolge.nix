@@ -2,6 +2,7 @@
 # TODO: rewrite memory structure to be attribute-set based
 { pkgs, lib, path ? ./main.mb, ... }: let
   malbolgeLength = 59049;
+  malbolgeFinalIndex = 59048; 
   stdout = x : builtins.trace "output: ${builtins.toJSON x}" x;
   # stdout = x: let
 #	scriptFile = pkgs.writeTextFile {name="out"; executable=true; destination="/bin/out"; text=''#!/usr/bin/env bash
@@ -116,7 +117,7 @@
 		a = builtins.break(builtins.elemAt stdin_parsed instream); # breakpoint
 		instream = instream + 1;
 	      } else {
-		a = 59048;
+		a = malbolgeFinalIndex;
 	      }
 	    else {};
 
