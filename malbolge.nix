@@ -1,26 +1,50 @@
-{ pkgs, lib, path ? "./main.mb" ... }: let
+# TODO: Migrate all char usages to int
+# TODO: rewrite memory structure to be attribute-set based
+{ pkgs, lib, path ? ./main.mb, ... }: let
   malbolgeLength = 59049;
-  stdout = x: let
-	scriptFile = pkgs.writeTextFile {name="out"; executable=true; destination="/bin/out"; text=''#!/usr/bin/env bash
-  echo ${toString x};'';};
-	in 
-	pkgs.runCommand "capture-stdout" {} ''
-		${scriptFile}/bin/out > $out
-	'';
+  malbolgeFinalIndex = 59048; 
+  stdout = x : builtins.trace "output: ${builtins.toJSON x}" x;
+  # stdout = x: let
+#	scriptFile = pkgs.writeTextFile {name="out"; executable=true; destination="/bin/out"; text=''#!/usr/bin/env bash
+ # echo ${toString x};'';};
+#	in 
+#	pkgs.runCommand "capture-stdout" {} ''
+#		${scriptFile}/bin/out > $out
+#	'';
   filein = x: (builtins.readFile x);
-  fileinChars = x: builtins.stringToCharacters (filein x);
-  fileinInts = x: map (y: lib.strings.charToInt y) (fileinChars x);
-  fileinCharsNoSpace = x: builtins.filter (y: y != " ") (fileinChars x);
-  fileinIntsNoSpace = x: map (y: lib.strings.charToInt y) (fileinCharsNoSpace x);
+  fileinChars = x: lib.stringToCharacters (filein x);
+  fileinInts = x: map lib.strings.charToInt (fileinChars x);
+  fileinCharsNoSpace = x: builtins.filter (y: y != " " && y != "\n" && y != "\t" && y != "\r") (fileinChars x);
+  fileinIntsNoSpace = x: map lib.strings.charToInt (fileinCharsNoSpace x); # use EVERYWHERE
+  expectInt = name: x:
+  if (builtins.isInt x || builtins.typeOf x == "int")  then
+    x
+  else
+    throw "${name}: expected int, got ${builtins.typeOf x}. Found value ${toString x} where expected int.";
   mem = builtins.genList(x : { a = false; b = false; }) malbolgeLength;
-  path = "./main.mb";
-  stdin_path = "./stdin.txt";
-  # main.mbstdin is a stdin replicator
+  stdin_path = "./stdin.txt"; # add to function call eventually
   stdin_parsed = fileinInts stdin_path;
-  fileLength = builtins.length (fileinCharsNoSpace path);
+  fileLength = builtins.length (fileinCharsNoSpace path); # use EVERYWHERE
   rawFileLength = builtins.length (fileinChars path);
   initialMemory = builtins.genList(i : (if i < fileLength then (builtins.elemAt (fileinIntsNoSpace path) i) else 0)) malbolgeLength;
   transformedMemory = lib.lists.imap0 (i : v : if i < fileLength then v else (op (builtins.elemAt transformedMemory (i - 1)) (builtins.elemAt transformedMemory (i - 2)))) initialMemory;
+  unraveledMemory = builtins.deepSeq transformedMemory transformedMemory;
+  # TODO: Make `initialMem` the definitive memory source.
+  initialMem = {base = unraveledMemory; patches = {};};
+  readMem = mem: i:
+  let
+    key = toString i;
+  in
+    if builtins.hasAttr key mem.patches then
+      mem.patches.${key}
+    else
+      builtins.elemAt mem.base i;
+  writeMem = mem: i: value:
+  mem // {
+    patches = mem.patches // {
+      "${toString i}" = value;
+    };
+  };  
   xlat1 =
     "+b(29e*j1VMEKLyC})8&m#~W>qxdRp0wkrUo[D7,XTcA\"lI"
     + ".v%{gJh4G\\-=O@5`_3i<?Z';FNQuY]szf$!BS/|t:Pn6^Ha";
@@ -28,19 +52,19 @@
     "5z]&gqtyfr$(we4{WP)H-Zn,[%\\3dL+Q;>U!pJS72FhOA1C"
     + "B6v^=I_0/8|jsb9m<.TVac`uY*MK'X~xDl}REokN:#?G\"i@";
   # create character arrays
-  xlat1List = builtins.stringToCharacters xlat1;
-  xlat2List = builtins.stringToCharacters xlat2;
+  xlat1List = lib.stringToCharacters xlat1;
+  xlat2List = lib.stringToCharacters xlat2;
   # determine element at index 1-94 for xlat1
   decode =
-    charValue: c:
+    intValue: c:
     let
-      index = lib.trivial.mod (charValue - 33 + c) 94;
+      index = lib.trivial.mod (intValue - 33 + c) 94;
     in
-    builtins.elemAt xlat1List index;
+    lib.strings.charToInt (builtins.elemAt xlat1List index);
   # determine element at index 1-94 for xlat2
-  mutate = charValue: builtins.elemAt xlat2List (charValue - 33);
-  pvm = index : builtins.elemAt (lib.lists.imap0 (i : v : if v > 33 && v < 127 then (decode v i) else 0) (fileinChars path)) index; # is 0 messing us up?
-    validMap = lib.lists.imap0 (i : v : ((pvm i) == "j" || (pvm i) == "i" || (pvm i) == "*" || (pvm i) == "p" || (pvm i) == "<" || (pvm i) == "/" || (pvm i) == "v" || (pvm i) == "o")) (builtins.genList (i : i) rawFileLength);
+  mutate = intValue: lib.strings.charToInt(builtins.elemAt xlat2List (intValue - 33)); # fixes one character string addition to memory
+  pvm = index : builtins.elemAt (lib.lists.imap0 (i : v : if v > 33 && v < 127 then (decode v i) else 0) (fileinIntsNoSpace path)) index; # potentially problematic line 
+    validMap = lib.lists.imap0 (i : _ : ((pvm i) == 106 || (pvm i) == 105 || (pvm i) == 42 || (pvm i) == 112 || (pvm i) == 60 || (pvm i) == 47 || (pvm i) == 118 || (pvm i) == 111)) (builtins.genList (i : i) fileLength); # this line could use some cleaning. using `fileLength` everywhere 
   # checks if the file is valid
   validFile = builtins.foldl' (acc: x: acc && x) true validMap;
 
@@ -78,39 +102,39 @@
   
   exec = state@{ a, c, d, mem, out, instream }:
     let 
-      memc = builtins.elemAt mem c;      
-      isValid = memc >= 33 && memc <= 126;
-      cmd = if isValid then decode memc c else -1;
+      memc = readMem mem c;      
+      isValid = (memc >= 33 && memc <= 126);
+      cmd = if isValid then lib.trivial.mod (c + memc) 94 else -1; # cleaner than decode memc c
     in  
-      if cmd == -1 then
-	exec state
-      # you could map integers to these instead for execution speed
-      else if cmd == "v" then 
-	stdout out
+      if cmd < 0 then
+  	throw "invalid memory value ${builtins.toString memc} at C=${builtins.toString c}"
+      # Integers are required 
+      else if cmd == 81 then 
+	(stdout out) # breakpoint
       else 
 	let
-	  memd = builtins.elemAt mem d; 
+	  memd =  (readMem mem d); # breakpoint added for debugging purposes 
 	  
 	  step = 
-	    if cmd == "j" then { d = memd; }
-	    else if cmd == "i" then { c = memd; }
-	    else if cmd == "*" then 
+	    if cmd == 40 then { d = (expectInt "memdcmd40" memd); }
+	    else if cmd == 4 then { c = (expectInt "memdcmd4" memd); }
+	    else if cmd == 39 then 
 	      let 
 		rot = (memd / 3) + ((lib.trivial.mod memd 3) * 19683);
 	      in
-		{a = rot; mem = lib.lists.replaceElemAt mem d rot;}
-	    else if cmd == "p" then 
+		{a = (expectInt "rotcmd39" rot); mem = writeMem mem d rot;}
+	    else if cmd == 62 then 
 	      let 
 		res = op a memd;
 	      in 
-		{a = res; mem = lib.lists.replaceElemAt mem d res;}
-	    else if cmd == "<" then {out = out + (builtins.toString a);}
-	    else if cmd == "/" then 
+		{a = (expectInt "rescmd62" res); mem = writeMem mem d res;}
+	    else if cmd == 5 then {out = out ++ [(lib.trivial.mod a 256)];}
+	    else if cmd == 23 then 
 	      if instream < builtins.length stdin_parsed then { 
-		a = builtins.elemAt stdin_parsed instream;
+		a = (builtins.elemAt stdin_parsed instream); # breakpoint
 		instream = instream + 1;
 	      } else {
-		a = 59048;
+		a = malbolgeFinalIndex;
 	      }
 	    else {};
 
@@ -119,12 +143,17 @@
 	  nextOut = step.out or out;
 	  nextInstream = step.instream or instream;	  
 	  baseMem = step.mem or mem;
-	  nextMem = lib.lists.replaceElemAt baseMem c [(mutate memc)];
+#	  postMem = lib.replaceElemAt baseMem c (mutate memc); # remember: [ mutate memc ] -> (mutate memc). The first is list insertion
 	  # modulo resets value to 0 when limit is reached
-	  nextC = lib.trivial.mod ((step.c or c) + 1) malbolgeLength;
-	  nextD = lib.trivial.mod ((step.d or d) + 1) malbolgeLength;
+	  postC = step.c or c;
+	  postD = step.d or d;
+	  
+	  encryptValue = readMem baseMem postC;
+	  nextMem = if encryptValue >= 33 && encryptValue <= 126 then writeMem baseMem postC (mutate encryptValue) else baseMem; 
+	  nextC = lib.trivial.mod (postC + 1) malbolgeLength;
+	  nextD = lib.trivial.mod (postD + 1) malbolgeLength;
 	in 
-	  exec { a = nextA; c = nextC; d = nextD; mem = nextMem; out = nextOut; instream = nextInstream; }
+	  exec { a = nextA; c = nextC; d = nextD; mem = nextMem; out = nextOut; instream = nextInstream; };
 	  
       # end exec
 	
@@ -132,5 +161,12 @@ in {
 
   inherit op;
   inherit exec;
-  p = exec {a=0; c=0; d=0; mem=transformedMemory; out=""; instream=0;};  
+  p = exec {
+	a = 0; 
+	c = 0; 
+	d = 0; 
+	mem = initialMem; 
+	out = []; 
+	instream = 0;
+  };  
 }
