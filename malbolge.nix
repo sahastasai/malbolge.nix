@@ -17,7 +17,7 @@
   fileinCharsNoSpace = x: builtins.filter (y: y != " " && y != "\n" && y != "\t" && y != "\r") (fileinChars x);
   fileinIntsNoSpace = x: map lib.strings.charToInt (fileinCharsNoSpace x); # use EVERYWHERE
   expectInt = name: x:
-  if (builtins.typeOf x == "int")  then
+  if (builtins.isInt x || builtins.typeOf x == "int")  then
     x
   else
     throw "${name}: expected int, got ${builtins.typeOf x}. Found value ${toString x} where expected int.";
@@ -28,6 +28,23 @@
   rawFileLength = builtins.length (fileinChars path);
   initialMemory = builtins.genList(i : (if i < fileLength then (builtins.elemAt (fileinIntsNoSpace path) i) else 0)) malbolgeLength;
   transformedMemory = lib.lists.imap0 (i : v : if i < fileLength then v else (op (builtins.elemAt transformedMemory (i - 1)) (builtins.elemAt transformedMemory (i - 2)))) initialMemory;
+  unraveledMemory = builtins.deepSeq transformedMemory transformedMemory;
+  # TODO: Make `initialMem` the definitive memory source.
+  initialMem = {base = unraveledMemory; patches = {};};
+  readMem = mem: i:
+  let
+    key = toString i;
+  in
+    if builtins.hasAttr key mem.patches then
+      mem.patches.${key}
+    else
+      builtins.elemAt mem.base i;
+  writeMem = mem: i: value:
+  mem // {
+    patches = mem.patches // {
+      "${toString i}" = value;
+    };
+  };  
   xlat1 =
     "+b(29e*j1VMEKLyC})8&m#~W>qxdRp0wkrUo[D7,XTcA\"lI"
     + ".v%{gJh4G\\-=O@5`_3i<?Z';FNQuY]szf$!BS/|t:Pn6^Ha";
@@ -85,7 +102,7 @@
   
   exec = state@{ a, c, d, mem, out, instream }:
     let 
-      memc = builtins.elemAt mem c;      
+      memc = readMem mem c;      
       isValid = (memc >= 33 && memc <= 126);
       cmd = if isValid then lib.trivial.mod (c + memc) 94 else -1; # cleaner than decode memc c
     in  
@@ -93,10 +110,10 @@
   	throw "invalid memory value ${builtins.toString memc} at C=${builtins.toString c}"
       # Integers are required 
       else if cmd == 81 then 
-	builtins.break(stdout out) # breakpoint
+	(stdout out) # breakpoint
       else 
 	let
-	  memd = builtins.break (builtins.elemAt mem d); # breakpoint added for debugging purposes 
+	  memd =  (readMem mem d); # breakpoint added for debugging purposes 
 	  
 	  step = 
 	    if cmd == 40 then { d = (expectInt "memdcmd40" memd); }
@@ -105,16 +122,16 @@
 	      let 
 		rot = (memd / 3) + ((lib.trivial.mod memd 3) * 19683);
 	      in
-		{a = (expectInt "rotcmd39" rot); mem = lib.replaceElemAt mem d rot;}
+		{a = (expectInt "rotcmd39" rot); mem = writeMem mem d rot;}
 	    else if cmd == 62 then 
 	      let 
 		res = op a memd;
 	      in 
-		{a = (expectInt "rescmd62" res); mem = lib.replaceElemAt mem d res;}
+		{a = (expectInt "rescmd62" res); mem = writeMem mem d res;}
 	    else if cmd == 5 then {out = out ++ [(lib.trivial.mod a 256)];}
 	    else if cmd == 23 then 
 	      if instream < builtins.length stdin_parsed then { 
-		a = builtins.break(builtins.elemAt stdin_parsed instream); # breakpoint
+		a = (builtins.elemAt stdin_parsed instream); # breakpoint
 		instream = instream + 1;
 	      } else {
 		a = malbolgeFinalIndex;
@@ -131,8 +148,8 @@
 	  postC = step.c or c;
 	  postD = step.d or d;
 	  
-	  encryptValue = builtins.elemAt baseMem postC;
-	  nextMem = if encryptValue >= 33 && encryptValue <= 126 then lib.replaceElemAt baseMem postC (mutate encryptValue) else baseMem; 
+	  encryptValue = readMem baseMem postC;
+	  nextMem = if encryptValue >= 33 && encryptValue <= 126 then writeMem baseMem postC (mutate encryptValue) else baseMem; 
 	  nextC = lib.trivial.mod (postC + 1) malbolgeLength;
 	  nextD = lib.trivial.mod (postD + 1) malbolgeLength;
 	in 
@@ -148,7 +165,7 @@ in {
 	a = 0; 
 	c = 0; 
 	d = 0; 
-	mem = transformedMemory; 
+	mem = initialMem; 
 	out = []; 
 	instream = 0;
   };  

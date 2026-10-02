@@ -29,8 +29,8 @@ apps = forEachSupportedSystem ({ pkgs }: {
 
         exec ${pkgs.nix}/bin/nix eval \
           --show-trace \
-	  --impure \
-          --json \
+          --impure \
+	  --json \
           --expr '
             let
               pkgs = import ${nixpkgs} {
